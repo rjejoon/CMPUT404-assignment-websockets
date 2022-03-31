@@ -18,6 +18,7 @@ from flask import Flask, request, redirect
 from flask_sockets import Sockets
 import gevent
 from gevent import queue
+from  geventwebsocket.websocket import WebSocket 
 import time
 import json
 import os
@@ -25,6 +26,8 @@ import os
 app = Flask(__name__)
 sockets = Sockets(app)
 app.debug = True
+
+ws_clients = []
 
 class World:
     def __init__(self):
@@ -64,6 +67,13 @@ myWorld = World()
 def set_listener( entity, data ):
     ''' do something with the update ! '''
 
+    for ws in ws_clients:
+        if not ws.closed:
+            # broadcast to all connected websockets
+            ws.send(json.dumps( { entity : data } ))
+        else:
+            ws_clients.remove(ws)
+
 myWorld.add_set_listener( set_listener )
         
 @app.route('/')
@@ -77,11 +87,21 @@ def read_ws(ws,client):
     return None
 
 @sockets.route('/subscribe')
-def subscribe_socket(ws):
+def subscribe_socket(ws: WebSocket):
     '''Fufill the websocket URL of /subscribe, every update notify the
        websocket and read updates from the websocket '''
     # XXX: TODO IMPLEMENT ME
-    return None
+    if ws not in ws_clients:
+        ws_clients.append(ws)
+        ws.send(json.dumps(myWorld.world()))
+
+    while not ws.closed:
+        data = ws.receive()
+        if data is not None:
+            data = json.loads(data)
+            for entity in data.keys():
+                myWorld.set(entity, data[entity])   # invokes listeners
+
 
 
 # I give this to you, this is how you get the raw body/data portion of a post in flask
@@ -100,10 +120,8 @@ def flask_post_json():
 def update(entity):
     '''update the entities via this interface'''
     data = flask_post_json()
-    # if request.method == 'POST':
-    #     myWorld.update(entity)
     myWorld.set(entity, data)
-    return None
+    return flask.jsonify(data)
 
 @app.route("/world", methods=['POST','GET'])    
 def world():
