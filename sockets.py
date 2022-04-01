@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
-# Copyright (c) 2013-2014 Abram Hindle
+# Copyright (c) 2022 Abram Hindle, Jejoon Ryu
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -81,26 +81,25 @@ def hello():
     '''Return something coherent here.. perhaps redirect to /static/index.html '''
     return redirect('/static/index.html', code=301)
 
-def read_ws(ws,client):
+def read_ws(ws):
     '''A greenlet function that reads from the websocket and updates the world'''
-    # XXX: TODO IMPLEMENT ME
-    return None
+    data = ws.receive()
+    if data is not None:
+        data = json.loads(data)
+        for entity in data.keys():
+            myWorld.set(entity, data[entity])   # invokes set listeners
 
 @sockets.route('/subscribe')
 def subscribe_socket(ws: WebSocket):
     '''Fufill the websocket URL of /subscribe, every update notify the
        websocket and read updates from the websocket '''
-    # XXX: TODO IMPLEMENT ME
+
     if ws not in ws_clients:
         ws_clients.append(ws)
         ws.send(json.dumps(myWorld.world()))
 
     while not ws.closed:
-        data = ws.receive()
-        if data is not None:
-            data = json.loads(data)
-            for entity in data.keys():
-                myWorld.set(entity, data[entity])   # invokes listeners
+        read_ws(ws)
 
 
 

@@ -6,7 +6,7 @@
     <meta content='width=device-width; height=device-height; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;' name='viewport' />
     <meta name="viewport" content="width=device-width" />
     <meta name="license" content="
-        Copyright 2013 Google, Abram Hindle
+        Copyright 2022 Google, Abram Hindle, Jejoon Ryu
         
         Licensed under the Apache License, Version 2.0 (the "License");
         you may not use this file except in compliance with the License.
@@ -37,11 +37,17 @@ var wscounter = 0;
 var socket;
 const serverURL = new URL(`${window.location.protocol}//${host}`);
 
+// randomize circle colours
+const mouseDownColour = `#${Math.floor(Math.random() * 0xffffff).toString(16)}`;
+const mouseUpColour = `#${Math.floor(Math.random() * 0xffffff).toString(16)}`;
+const mouseDragColour = `#${Math.floor(Math.random() * 0xffffff).toString(16)}`;
+
+
 function debug(str) {
     var debugDiv = document.getElementById('debug');
     debugDiv.innerHTML = "" + str;
 }
-debug("Test");
+// debug("Test");
 
 world = {};
 
@@ -54,9 +60,10 @@ function drawCircle(context,entity) {
         var y = entity["y"];
         //moveTo(x,y);
         fillStyle = entity["colour"];
-        strokeStyle = fillStyle;
+        strokeStyle = 'white';
         arc(x, y, (entity["radius"])?entity["radius"]:50, 0, 2.0 * Math.PI, false);  
         stroke();                                
+        fill();
     }
 }
 
@@ -132,7 +139,6 @@ function addEntity(entity, data) {
             try {
                 if (xhr.status == 200) {
                     const jsonResponse = JSON.parse(xhr.responseText);
-                    console.log(jsonResponse);
                 }
             }
             catch(e) {
@@ -253,16 +259,16 @@ mouse = (function() {
 // Add the application specific mouse listeners!
 //XXX: TODO Make these prettier!
 mouse.mousedowners.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'blue'});
+    addEntityWithoutName({'x':x,'y':y,'colour':mouseDownColour, 'radius':40});
 });
 
 mouse.mouseuppers.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'red'});
+    addEntityWithoutName({'x':x,'y':y,'colour':mouseUpColour, 'radius':40});
 });
 
 mouse.mousedraggers.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'green',
-                          'radius':10});
+    addEntityWithoutName({'x':x,'y':y,'colour':mouseDragColour,
+                          'radius':8});
 });
 
 
@@ -275,23 +281,21 @@ function wsSetup() {
     var url = "ws://"+host+"/subscribe";   
     socket = new WebSocket(url);
     socket.onopen = function() {
-        //XXX: TODO What are you going to do here?
-        console.log("Websocket opened")
+        console.log("Websocket opened");
+        clearFrame();
     };
     socket.onerror = function(msg) {
-        debug("WebSocket Error:" + msg.data);
+        // debug("WebSocket Error:" + msg.data);
     };
     socket.onmessage = function(msg) {  
         try {
-            debug("WebSocket Recv:" + msg.data);
+            // debug("WebSocket Recv:" + msg.data);
             entity = JSON.parse(msg.data);
             Object.keys(entity).forEach(key => {
                 world[key] = entity[key];
             });
-            
             drawNextFrame();
             drawFrame();
-            //XXX: TODO What are you going to do here?            
         } catch (e) {
             alert("socket on message: " + e);
         }
